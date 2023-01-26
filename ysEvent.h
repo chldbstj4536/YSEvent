@@ -7,6 +7,10 @@ namespace YS
 {
     template <typename T>
     concept non_void = !std::is_void_v<T>;
+    template <typename T>
+    concept constant = std::is_const_v<T>;
+    template <typename T>
+    concept non_constant = !std::is_const_v<T>;
 
     template <typename _FuncType>
     class Event;
@@ -25,14 +29,14 @@ namespace YS
         {
         public:
             virtual _ReturnType operator()(_ParamTypes... params) = 0;
-            virtual bool operator==(Function const &fn) = 0;
+            virtual bool operator==(Function const &fn) const = 0;
         };
         class NonMemFunction : public Function
         {
         public:
             NonMemFunction(EventFnType fn) : fn(fn) {}
             virtual _ReturnType operator()(_ParamTypes... params) override { return fn(params...); }
-            virtual bool operator==(Function const &rhs) override
+            virtual bool operator==(Function const &rhs) const override
             {
                 try { return dynamic_cast<NonMemFunction const &>(rhs).fn == fn; }
                 catch (std::bad_cast e) { return false; }
@@ -52,7 +56,7 @@ namespace YS
                     return ((*pShared).*fn)(params...);
                 throw std::bad_weak_ptr();
             }
-            virtual bool operator==(Function const &rhs) override
+            virtual bool operator==(Function const &rhs) const override
             {
                 try
                 {
@@ -70,9 +74,8 @@ namespace YS
             std::weak_ptr<_FnOwner> pOwner;
             EventMemFnType<_FnOwner> fn;
         };
-        template <class _FnOwner> class ConstMemFunction;
-        template <class _FnOwner>
-        class ConstMemFunction<const _FnOwner> : public Function
+        template <constant _FnOwner>
+        class ConstMemFunction : public Function
         {
         public:
             ConstMemFunction(std::shared_ptr<_FnOwner> const &pOwner, EventConstMemFnType<_FnOwner> fn) : pOwner(pOwner), fn(fn) {}
@@ -82,7 +85,7 @@ namespace YS
                     return ((*pShared).*fn)(params...);
                 throw std::bad_weak_ptr();
             }
-            virtual bool operator==(Function const &rhs) const
+            virtual bool operator==(Function const &rhs) const override
             {
                 try
                 {
@@ -149,30 +152,85 @@ namespace YS
             return *this;
         }
 
+        /// <summary>
+        /// 일반 함수 등록
+        /// </summary>
+        /// <param name="pFn">등록할 함수 포인터</param>
         void AddListener(EventFnType pFn) { *this += pFn; }
-        template <class _Owner>
+        /// <summary>
+        /// 비상수 객체로부터 비상수 멤버 함수 등록
+        /// </summary>
+        /// <param name="pOwner">비상수 멤버 함수를 호출할 비상수 객체</param>
+        /// <param name="pMemFn">등록할 비상수 멤버 함수</param>
+        template <non_constant _Owner>
         void AddListener(std::shared_ptr<_Owner> const &pOwner, EventMemFnType<_Owner> pMemFn)
         {
             if (pMemFn != nullptr)
                 m_listeners.push_back(std::make_unique<MemFunction<_Owner>>(pOwner, pMemFn));
         }
-        template <class _Owner>
-        void AddListener(std::shared_ptr<const _Owner> const &pOwner, EventConstMemFnType<const _Owner> pMemFn)
+        /// <summary>
+        /// 비상수 객체로부터 상수 멤버 함수 등록
+        /// </summary>
+        /// <param name="pOwner">상수 멤버 함수를 호출할 비상수 객체</param>
+        /// <param name="pConstMemFn">등록할 상수 멤버 함수</param>
+        template <non_constant _Owner>
+        void AddListener(std::shared_ptr<_Owner> const &pOwner, EventConstMemFnType<_Owner> pConstMemFn)
         {
-            if (pMemFn != nullptr)
-                m_listeners.push_back(std::make_unique<ConstMemFunction<const _Owner>>(pOwner, pMemFn));
+            if (pConstMemFn != nullptr)
+                m_listeners.push_back(std::make_unique<ConstMemFunction<const _Owner>>(pOwner, pConstMemFn));
         }
+        /// <summary>
+        /// 상수 객체로부터 상수 멤버 함수 등록
+        /// </summary>
+        /// <param name="pOwner">상수 멤버 함수를 호출할 상수 객체</param>
+        /// <param name="pConstMemFn">등록할 상수 멤버 함수</param>
+        template <constant _Owner>
+        void AddListener(std::shared_ptr<_Owner> const &pOwner, EventConstMemFnType<std::remove_const_t<_Owner>> pConstMemFn)
+        {
+            if (pConstMemFn != nullptr)
+                m_listeners.push_back(std::make_unique<ConstMemFunction<_Owner>>(pOwner, pConstMemFn));
+        }
+        /// <summary>
+        /// 일반 함수 등록 해제
+        /// </summary>
+        /// <param name="pFn">등록된 함수</param>
         void RemoveListener(EventFnType pFn) { *this -= pFn; }
-        template <class _Owner>
+        /// <summary>
+        /// 비상수 객체로 등록된 비상수 멤버 함수 등록 해제
+        /// </summary>
+        /// <typeparam name="_Owner">등록한 비상수 객체 타입</typeparam>
+        /// <param name="pOwner">등록한 객체</param>
+        /// <param name="pConstMemFn">등록된 비상수 멤버 함수</param>
+        template <non_constant _Owner>
         void RemoveListener(std::shared_ptr<_Owner> const &_pOwner, EventMemFnType<_Owner> pMemFn)
         {
             RemoveListener(MemFunction(_pOwner, pMemFn));
         }
-        template <class _Owner>
-        void RemoveListener(std::shared_ptr<const _Owner> const &pOwner, EventConstMemFnType<_Owner> pConstMemFn)
+        /// <summary>
+        /// 비상수 객체로 등록된 상수 멤버 함수 등록 해제
+        /// </summary>
+        /// <typeparam name="_Owner">등록한 비상수 객체 타입</typeparam>
+        /// <param name="pOwner">등록한 객체</param>
+        /// <param name="pConstMemFn">등록된 상수 멤버 함수</param>
+        template <non_constant _Owner>
+        void RemoveListener(std::shared_ptr<_Owner> const &pOwner, EventConstMemFnType<_Owner> pConstMemFn)
         {
-            RemoveListener(ConstMemFunction(pOwner, pConstMemFn));
+            RemoveListener(ConstMemFunction<const _Owner>(pOwner, pConstMemFn));
         }
+        /// <summary>
+        /// 상수 객체로 등록된 상수 멤버 함수 등록 해제
+        /// </summary>
+        /// <typeparam name="_Owner">등록한 상수 객체 타입</typeparam>
+        /// <param name="pOwner">등록한 객체</param>
+        /// <param name="pConstMemFn">등록된 상수 멤버 함수</param>
+        template <constant _Owner>
+        void RemoveListener(std::shared_ptr<_Owner> const &pOwner, EventConstMemFnType<std::remove_const_t<_Owner>> pConstMemFn)
+        {
+            RemoveListener(ConstMemFunction<const _Owner>(pOwner, pConstMemFn));
+        }
+        /// <summary>
+        /// 등록된 모든 함수들 삭제
+        /// </summary>
         void RemoveAllListener() { m_listeners.clear(); }
 
     private:
