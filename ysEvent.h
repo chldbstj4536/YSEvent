@@ -1,3 +1,10 @@
+/**
+ * @file ysEvent.h
+ * @author 최윤서 (choicoco1995@naver.com)
+ * @brief 이벤트 시스템
+ * @version 1.0.0
+ * @date 2023-01-30
+ */
 #include <list>
 #include <memory>
 #include <exception>
@@ -5,22 +12,85 @@
 
 namespace YS
 {
+    /**
+     * @brief T를 void타입으로 제약하는 콘셉트
+     */
     template <typename T>
     concept non_void = !std::is_void_v<T>;
+    /**
+     * @brief T를 상수형으로 제약하는 콘셉트
+     */
     template <typename T>
     concept constant = std::is_const_v<T>;
+    /**
+     * @brief T를 비상수형으로 제약하는 콘셉트
+     */
     template <typename T>
     concept non_constant = !std::is_const_v<T>;
 
+    /**
+     * @brief 함수 포인터 타입 재정의
+     * 
+     * @tparam _R 반환 타입
+     * @tparam _Args 매개변수 타입
+     */
     template <class _R, typename... _Args> using FnPtr = _R(*)(_Args...);
+    /**
+     * @brief 비 상수 멤버 함수 포인터 타입 재정의
+     * 
+     * @tparam _C 함수 호출 객체 타입
+     * @tparam _R 반환 타입
+     * @tparam _Args 매개변수 타입
+     */
     template <class _C, typename _R, typename... _Args> using MemFnPtr = _R(_C::*)(_Args...);
+    /**
+     * @brief 상수 멤버 함수 포인터 타입 재정의
+     * 
+     * @tparam _C 함수 호출 객체 타입
+     * @tparam _R 반환 타입
+     * @tparam _Args 매개변수 타입
+     */
     template <class _C, typename _R, typename... _Args> using ConstMemFnPtr = _R(_C::*)(_Args...) const;
+    /**
+     * @brief 비상수 맴버 함수 포인터를 선택하는 함수
+     * 
+     * 이벤트 시스템 사용 중 상수 멤버 함수와 비상수 멤버 함수의 이름이 같은 경우 비상수 객체에 대해 Event::AddListener 사용 시\n
+     * 컴파일러는 상수 멤버 함수와 비상수 멤버 함수 중 어떤 걸 선택해야 하는지 컴파일러가 정할 수 없다.\n
+     * 따라서 명시적 캐스팅을 해줘야 하는데, 이를 간편하게 해주기 위한 헬퍼 함수이다.
+     * 
+     * @param fp 선택할 멤버 함수 포인터
+     * @return MemFnPtr<_C, _R, _Args...> 비상수 멤버 함수 포인터를 반환한다.
+     */
     template <class _C, typename _R, typename... _Args> MemFnPtr<_C, _R, _Args...> SelectNonConstFn(MemFnPtr<_C, _R, _Args...> fp) { return fp; }
+    /**
+     * @brief 상수 맴버 함수 포인터를 선택하는 함수
+     * 
+     * SelectNonConstFn 함수와 같다.
+     * 
+     * @param fp 선택할 멤버 함수 포인터
+     * @return MemFnPtr<_C, _R, _Args...> 상수 멤버 함수 포인터를 반환한다.
+     */
     template <class _C, typename _R, typename... _Args> ConstMemFnPtr<_C, _R, _Args...> SelectConstFn(ConstMemFnPtr<_C, _R, _Args...> fp) { return fp; }
 
+    /**
+     * @brief 기반 이벤트 클래스
+     * 
+     * 함수의 반환 타입과 매개변수 타입을 분리해서 구현해야 하지만 사용자가 사용할 때는\n
+     * 함수타입 하나로도 간편하게 사용할 수 있도록 하기 위한 전방선언 클래스이다.
+     * 
+     * @tparam _FuncType 함수의 타입
+     */
     template <typename _FuncType>
     class Event;
 
+    /**
+     * @brief 이벤트 클래스
+     * 
+     * 반환 타입과 매개변수 타입을 가진 이벤트 클래스
+     * 
+     * @tparam _R 반환 타입
+     * @tparam _Args 매개변수 타입
+     */
     template <typename _R, typename... _Args>
     class Event<_R(_Args...)>
     {
@@ -30,18 +100,18 @@ namespace YS
         template <class _C> using EventConstMemFnPtr = ConstMemFnPtr<_C, _R, _Args...>;
 #pragma endregion
 #pragma region Define Function
-        /// <summary>
-        /// 이벤트에 등록될 함수를 담기 위한 기본 클래스
-        /// </summary>
+        /**
+         * @brief 이벤트에 등록될 함수를 담기 위한 기본 클래스
+         */
         class Function
         {
         public:
             virtual _R operator()(_Args... params) = 0;
             virtual bool operator==(Function const &rhs) const = 0;
         };
-        /// <summary>
-        /// 비멤버 함수를 담기 위한 파생 클래스
-        /// </summary>
+        /**
+         * @brief 비멤버 함수를 담기 위한 파생 클래스
+         */
         class NonMemFunction : public Function
         {
         public:
@@ -55,10 +125,11 @@ namespace YS
         private:
             EventFnPtr m_pFn;
         };
-        /// <summary>
-        /// 비상수 멤버 함수를 담기 위한 파생 클래스
-        /// </summary>
-        /// <typeparam name="_C">해당 함수를 보유하고 있는 클래스</typeparam>
+        /**
+         * @brief 비상수 멤버 함수를 담기 위한 파생 클래스
+         * 
+         * @tparam _C 해당 함수를 보유하고 있는 클래스
+         */
         template <class _C>
         class MemFunction : public Function
         {
@@ -88,10 +159,12 @@ namespace YS
             std::weak_ptr<_C> m_pOwner;
             EventMemFnPtr<_C> m_pMemFn;
         };
-        /// <summary>
-        /// 상수 멤버 함수를 담기 위한 파생 클래스
-        /// </summary>
-        /// <typeparam name="_C">해당 함수를 보유하고 있는 클래스</typeparam>
+
+        /**
+         * @brief 상수 멤버 함수를 담기 위한 파생 클래스
+         * 
+         * @tparam _C 해당 함수를 보유하고 있는 클래스
+         */
         template <constant _C>
         class ConstMemFunction : public Function
         {
@@ -123,18 +196,21 @@ namespace YS
         };
 #pragma endregion
     public:
+/// @cond
         Event() = default;
         Event(Event const &) = delete;
         Event(Event &&) = delete;
         ~Event() = default;
         Event& operator=(Event const &) = delete;
         Event& operator=(Event &&) = delete;
+/// @endcond
 
-        /// <summary>
-        /// 반환값이 존재하는 타입에 대한 함수 호출
-        /// </summary>
-        /// <param name="args">함수 호출에 필요한 매개변수</param>
-        /// <returns>함수의 반환 값</returns>
+        /**
+         * @brief 반환값이 존재하는 타입에 대한 함수 호출
+         * 
+         * @param args 함수 호출에 필요한 매개변수
+         * @return 함수의 반환 값
+        */
         std::list<_R> operator()(_Args... args)
             requires(non_void<_R>)
         {
@@ -147,10 +223,11 @@ namespace YS
             }
             return rvs;
         }
-        /// <summary>
-        /// 반환값이 존재하지 않는 함수 타입에 대한 함수 호출
-        /// </summary>
-        /// <param name="args">함수 호출에 필요한 매개변수</param>
+        /**
+         * @brief 반환값이 존재하지 않는 함수 타입에 대한 함수 호출
+         * 
+         * @param args 함수 호출에 필요한 매개변수
+         */
         void operator()(_Args... args)
         {
             auto i = m_listeners.begin();
@@ -160,119 +237,133 @@ namespace YS
                 catch (std::bad_weak_ptr e) { i = m_listeners.erase(--i); }
             }
         }
-        /// <summary>
-        /// 이벤트에 함수 등록 (AddListener와 동일)
-        /// 비멤버 함수에만 사용 가능
-        /// </summary>
-        /// <param name="pFn">등록할 함수 포인터</param>
-        /// <returns>자기 자신을 반환</returns>
+        /**
+         * @brief 이벤트에 함수 등록
+         * 
+         * AddListner와 동일\n
+         * 비멤버 함수에만 사용가능
+         * 
+         * @param pFn 등록할 함수 포인터
+         * @return Event& 자기 자신을 반환
+         */
         Event& operator+=(EventFnPtr pFn)
         {
             if (pFn != nullptr)
                 m_listeners.push_back(std::make_unique<NonMemFunction>(pFn));
             return *this;
         }
-        /// <summary>
-        /// 이벤트에 등록된 모든 함수를 제거하고 pFn 함수 등록
-        /// </summary>
-        /// <param name="_R">등록할 함수 포인터</typeparam>
-        /// <returns>자기 자신을 반환</returns>
+        /**
+         * @brief 이벤트에 등록된 모든 함수를 제거하고 pFn 함수 등록 
+         * 
+         * @param pFn 등록할 함수 포인
+         * @return Event& 자기 자신을 반환
+         */
         Event& operator=(EventFnPtr pFn)
         {
             m_listeners.clear();
             this += pFn;
             return *this;
         }
-        /// <summary>
-        /// pFn을 이벤트에서 등록 해제
-        /// </summary>
-        /// <param name="_R">등록 해제할 함수 포인터</typeparam>
-        /// <returns>자기 자신을 반환</returns>
+        /**
+         * @brief pFn을 이벤트에서 등록 해제
+         * 
+         * @param pFn 등록 해제할 함수 포인터
+         * @return Event& 자기 자신을 반환
+         */
         Event& operator-=(EventFnPtr pFn)
         {
             RemoveListener(NonMemFunction(pFn));
             return *this;
         }
 
-        /// <summary>
-        /// 일반 함수 등록
-        /// </summary>
-        /// <param name="pFn">등록할 함수 포인터</param>
+        /**
+         * @brief 일반 함수 등록
+         * 
+         * @param pFn 등록할 함수 포인터
+         */
         void AddListener(EventFnPtr pFn) { *this += pFn; }
-        /// <summary>
-        /// 비상수 객체로부터 비상수 멤버 함수 등록
-        /// </summary>
-        /// <param name="pOwner">비상수 멤버 함수를 호출할 비상수 객체</param>
-        /// <param name="pMemFn">등록할 비상수 멤버 함수</param>
+        /**
+         * @brief 비상수 객체로부터 비상수 멤버 함수 등록
+         * 
+         * @param pOwner 비상수 멤버 함수를 호출할 비상수 객체
+         * @param pMemFn 등록할 비상수 멤버 함수
+         */
         template <non_constant _C>
         void AddListener(std::shared_ptr<_C> const &pOwner, EventMemFnPtr<_C> pMemFn)
         {
             if (pMemFn != nullptr)
                 m_listeners.push_back(std::make_unique<MemFunction<_C>>(pOwner, pMemFn));
         }
-        /// <summary>
-        /// 비상수 객체로부터 상수 멤버 함수 등록
-        /// </summary>
-        /// <param name="pOwner">상수 멤버 함수를 호출할 비상수 객체</param>
-        /// <param name="pConstMemFn">등록할 상수 멤버 함수</param>
+        /**
+         * @brief 비상수 객체로부터 상수 멤버 함수 등록
+         * 
+         * @param pOwner 상수 멤버 함수를 호출할 비상수 객체
+         * @param pConstMemFn 등록할 상수 멤버 함수
+         */
         template <non_constant _C>
         void AddListener(std::shared_ptr<_C> const &pOwner, EventConstMemFnPtr<_C> pConstMemFn)
         {
             if (pConstMemFn != nullptr)
                 m_listeners.push_back(std::make_unique<ConstMemFunction<const _C>>(pOwner, pConstMemFn));
         }
-        /// <summary>
-        /// 상수 객체로부터 상수 멤버 함수 등록
-        /// </summary>
-        /// <param name="pOwner">상수 멤버 함수를 호출할 상수 객체</param>
-        /// <param name="pConstMemFn">등록할 상수 멤버 함수</param>
+        /**
+         * @brief 상수 객체로부터 상수 멤버 함수 등록
+         * 
+         * @param pOwner 상수 멤버 함수를 호출할 상수 객체
+         * @param pConstMemFn 등록할 상수 멤버 함수
+         */
         template <constant _C>
         void AddListener(std::shared_ptr<_C> const &pOwner, EventConstMemFnPtr<std::remove_const_t<_C>> pConstMemFn)
         {
             if (pConstMemFn != nullptr)
                 m_listeners.push_back(std::make_unique<ConstMemFunction<_C>>(pOwner, pConstMemFn));
         }
-        /// <summary>
-        /// 일반 함수 등록 해제
-        /// </summary>
-        /// <param name="pFn">등록된 함수</param>
+        /**
+         * @brief 일반 함수 등록 해제
+         * 
+         * @param pFn 등록된 함수
+         */
         void RemoveListener(EventFnPtr pFn) { *this -= pFn; }
-        /// <summary>
-        /// 비상수 객체로 등록된 비상수 멤버 함수 등록 해제
-        /// </summary>
-        /// <typeparam name="_Owner">등록한 비상수 객체 타입</typeparam>
-        /// <param name="pOwner">등록한 객체</param>
-        /// <param name="pConstMemFn">등록된 비상수 멤버 함수</param>
+        /**
+         * @brief 비상수 객체로 등록된 비상수 멤버 함수 등록 해제
+         * 
+         * @tparam _C 등록한 비상수 객체 타입
+         * @param _pOwner 등록한 객체
+         * @param pMemFn 등록된 비상수 멤버 함수
+         */
         template <non_constant _C>
         void RemoveListener(std::shared_ptr<_C> const &_pOwner, EventMemFnPtr<_C> pMemFn)
         {
             RemoveListener(MemFunction(_pOwner, pMemFn));
         }
-        /// <summary>
-        /// 비상수 객체로 등록된 상수 멤버 함수 등록 해제
-        /// </summary>
-        /// <typeparam name="_Owner">등록한 비상수 객체 타입</typeparam>
-        /// <param name="pOwner">등록한 객체</param>
-        /// <param name="pConstMemFn">등록된 상수 멤버 함수</param>
+        /**
+         * @brief 비상수 객체로 등록된 상수 멤버 함수 등록 해제
+         *
+         * @tparam _C 등록한 비상수 객체 타입
+         * @param pOwner 등록한 객체
+         * @param pConstMemFn 등록된 상수 멤버 함수
+         * @return template <non_constant _C> 
+         */
         template <non_constant _C>
         void RemoveListener(std::shared_ptr<_C> const &pOwner, EventConstMemFnPtr<_C> pConstMemFn)
         {
             RemoveListener(ConstMemFunction<const _C>(pOwner, pConstMemFn));
         }
-        /// <summary>
-        /// 상수 객체로 등록된 상수 멤버 함수 등록 해제
-        /// </summary>
-        /// <typeparam name="_Owner">등록한 상수 객체 타입</typeparam>
-        /// <param name="pOwner">등록한 객체</param>
-        /// <param name="pConstMemFn">등록된 상수 멤버 함수</param>
+        /**
+         * @brief 상수 객체로 등록된 상수 멤버 함수 등록 해제
+         * 
+         * @tparam _C 등록한 상수 객체 타입
+         * @param pOwner 등록한 객체
+         * @param pConstMemFn 등록된 상수 멤버 함수
+         */
         template <constant _C>
         void RemoveListener(std::shared_ptr<_C> const &pOwner, EventConstMemFnPtr<std::remove_const_t<_C>> pConstMemFn)
         {
             RemoveListener(ConstMemFunction<const _C>(pOwner, pConstMemFn));
         }
-        /// <summary>
-        /// 등록된 모든 함수들 삭제
-        /// </summary>
+        /**
+         * @brief 등록된 모든 함수들 삭제
+         */
         void RemoveAllListener() { m_listeners.clear(); }
 
     private:
