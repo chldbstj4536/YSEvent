@@ -5,6 +5,7 @@
  * @version 1.0.0
  * @date 2023-01-30
  */
+#pragma once
 #include <list>
 #include <memory>
 #include <exception>
@@ -272,7 +273,7 @@ namespace YS
         Event& operator=(EventFnPtr pFn)
         {
             m_listeners.clear();
-            this += pFn;
+            *this += pFn;
             return *this;
         }
         /**
