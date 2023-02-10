@@ -222,7 +222,7 @@ namespace YS
          * @param args 함수 호출에 필요한 매개변수
          * @return 함수의 반환 값
         */
-        std::list<_R> operator()(_Args... args)
+        std::list<_R> operator()(_Args... args) const
             requires(non_void<_R>)
         {
             std::list<_R> rvs;
@@ -239,7 +239,7 @@ namespace YS
          * 
          * @param args 함수 호출에 필요한 매개변수
          */
-        void operator()(_Args... args)
+        void operator()(_Args... args) const
         {
             auto i = m_listeners.begin();
             while (i != m_listeners.end())
@@ -391,6 +391,6 @@ namespace YS
                 ++iter;
             }
         }
-        std::list<std::unique_ptr<Function>> m_listeners;
+        mutable std::list<std::unique_ptr<Function>> m_listeners;
     };
 }
