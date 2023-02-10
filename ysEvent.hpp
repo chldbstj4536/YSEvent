@@ -108,6 +108,7 @@ namespace YS
         public:
             virtual _R operator()(_Args... params) = 0;
             virtual bool operator==(Function const &rhs) const = 0;
+            virtual std::unique_ptr<Function> Clone() const = 0;
         };
         /**
          * @brief 비멤버 함수를 담기 위한 파생 클래스
@@ -122,6 +123,7 @@ namespace YS
                 try { return dynamic_cast<NonMemFunction const &>(rhs).m_pFn == m_pFn; }
                 catch (std::bad_cast e) { return false; }
             }
+            virtual std::unique_ptr<Function> Clone() const override { return std::make_unique<NonMemFunction>(m_pFn); }
         private:
             EventFnPtr m_pFn;
         };
@@ -154,6 +156,8 @@ namespace YS
                 }
                 catch (std::bad_cast e) { return false; }
             }
+            virtual std::unique_ptr<Function> Clone() const override
+            { return std::make_unique<MemFunction>(m_pOwner.lock(), m_pMemFn); }
 
         private:
             std::weak_ptr<_C> m_pOwner;
@@ -189,6 +193,8 @@ namespace YS
                 }
                 catch (std::bad_cast e) { return false; }
             }
+            virtual std::unique_ptr<Function> Clone() const override
+            { return std::make_unique<ConstMemFunction>(m_pOwner.lock(), m_pConstMemFn); }
 
         private:
             std::weak_ptr<_C> m_pOwner;
@@ -198,11 +204,16 @@ namespace YS
     public:
 /// @cond
         Event() = default;
-        Event(Event const &) = delete;
-        Event(Event &&) = delete;
+        Event(Event const &o) { *this = o; }
+        Event(Event &&) = default;
         ~Event() = default;
-        Event& operator=(Event const &) = delete;
-        Event& operator=(Event &&) = delete;
+        Event& operator=(Event const &o)
+        {
+            for (auto& listener : o.m_listeners)
+                m_listeners.push_back(listener->Clone());
+            return *this;
+        }
+        Event& operator=(Event &&) = default;
 /// @endcond
 
         /**
