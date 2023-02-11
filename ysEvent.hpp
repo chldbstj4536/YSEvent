@@ -14,25 +14,10 @@
 #include <memory>
 #include <exception>
 #include <concepts>
+#include <ysDefine.hpp>
 
 namespace YS
 {
-    /**
-     * @brief T를 void타입으로 제약하는 콘셉트
-     */
-    template <typename T>
-    concept non_void = !std::is_void_v<T>;
-    /**
-     * @brief T를 상수형으로 제약하는 콘셉트
-     */
-    template <typename T>
-    concept constant = std::is_const_v<T>;
-    /**
-     * @brief T를 비상수형으로 제약하는 콘셉트
-     */
-    template <typename T>
-    concept non_constant = !std::is_const_v<T>;
-
     /**
      * @brief 함수 포인터 타입 재정의
      * 
