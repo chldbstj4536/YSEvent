@@ -5,6 +5,10 @@
  * @version 1.0.0
  * @date 2023-01-30
  */
+
+// 구현하면서 느낌점 정리
+// note #1
+
 #pragma once
 #include <list>
 #include <memory>
@@ -216,6 +220,20 @@ namespace YS
         }
         Event& operator=(Event &&) = default;
 /// @endcond
+        explicit Event(EventFnPtr pFn) { *this += pFn; }
+        template <non_constant _C>
+        explicit Event(std::shared_ptr<_C> const &pOwner, EventMemFnPtr<_C> pMemFn) { AddListener(pOwner, pMemFn); }
+        template <class _C>
+        explicit Event(std::shared_ptr<_C> const &pOwner, EventConstMemFnPtr<std::remove_const_t<_C>> pConstMemFn) { AddListener(pOwner, pConstMemFn); }
+
+#pragma region 구현하면서 불가능 했던 점
+        // note #1 : 템플릿 생성자는 템플릿 타입 매개변수를 추론을 통해서만 알 수 있다.
+        // 템플릿 생성자는 템플릿 타입 매개변수를 추론을 통해서만 알 수 있기 떄문에
+        // 추론이 불가능하도록 _C를 구성하면 안된다.
+        // 따라서 _C에 (const std::remove_const_t<_C>)는 _C를 추론하기에 알맞지 않으므로 이렇게 작성하는 것은 불가능하다.
+        //template <class _C>
+        //explicit Event(std::shared_ptr<const std::remove_const_t<_C>> const &pOwner, EventConstMemFnPtr<std::remove_const_t<_C>> pConstMemFn) { AddListener(pOwner, pConstMemFn); }
+#pragma endregion
 
         /**
          * @brief 반환값이 존재하는 타입에 대한 함수 호출
@@ -307,28 +325,16 @@ namespace YS
                 m_listeners.push_back(std::make_unique<MemFunction<_C>>(pOwner, pMemFn));
         }
         /**
-         * @brief 비상수 객체로부터 상수 멤버 함수 등록
+         * @brief 객체로부터 상수 멤버 함수 등록
          * 
-         * @param pOwner 상수 멤버 함수를 호출할 비상수 객체
+         * @param pOwner 상수 멤버 함수를 호출할 객체
          * @param pConstMemFn 등록할 상수 멤버 함수
          */
-        template <non_constant _C>
-        void AddListener(std::shared_ptr<_C> const &pOwner, EventConstMemFnPtr<_C> pConstMemFn)
+        template <class _C>
+        void AddListener(std::shared_ptr<_C> const& pOwner, EventConstMemFnPtr<std::remove_const_t<_C>> pConstMemFn)
         {
             if (pConstMemFn != nullptr)
                 m_listeners.push_back(std::make_unique<ConstMemFunction<const _C>>(pOwner, pConstMemFn));
-        }
-        /**
-         * @brief 상수 객체로부터 상수 멤버 함수 등록
-         * 
-         * @param pOwner 상수 멤버 함수를 호출할 상수 객체
-         * @param pConstMemFn 등록할 상수 멤버 함수
-         */
-        template <constant _C>
-        void AddListener(std::shared_ptr<_C> const &pOwner, EventConstMemFnPtr<std::remove_const_t<_C>> pConstMemFn)
-        {
-            if (pConstMemFn != nullptr)
-                m_listeners.push_back(std::make_unique<ConstMemFunction<_C>>(pOwner, pConstMemFn));
         }
         /**
          * @brief 일반 함수 등록 해제
@@ -349,26 +355,13 @@ namespace YS
             RemoveListener(MemFunction(_pOwner, pMemFn));
         }
         /**
-         * @brief 비상수 객체로 등록된 상수 멤버 함수 등록 해제
-         *
-         * @tparam _C 등록한 비상수 객체 타입
-         * @param pOwner 등록한 객체
-         * @param pConstMemFn 등록된 상수 멤버 함수
-         * @return template <non_constant _C> 
-         */
-        template <non_constant _C>
-        void RemoveListener(std::shared_ptr<_C> const &pOwner, EventConstMemFnPtr<_C> pConstMemFn)
-        {
-            RemoveListener(ConstMemFunction<const _C>(pOwner, pConstMemFn));
-        }
-        /**
-         * @brief 상수 객체로 등록된 상수 멤버 함수 등록 해제
+         * @brief 객체로 등록된 상수 멤버 함수 등록 해제
          * 
-         * @tparam _C 등록한 상수 객체 타입
+         * @tparam _C 등록한 객체 타입
          * @param pOwner 등록한 객체
          * @param pConstMemFn 등록된 상수 멤버 함수
          */
-        template <constant _C>
+        template <class _C>
         void RemoveListener(std::shared_ptr<_C> const &pOwner, EventConstMemFnPtr<std::remove_const_t<_C>> pConstMemFn)
         {
             RemoveListener(ConstMemFunction<const _C>(pOwner, pConstMemFn));
