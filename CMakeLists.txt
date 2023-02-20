@@ -10,4 +10,4 @@ target_compile_features(${target_name} PUBLIC cxx_std_20)
 
 add_subdirectory(submodules/YSDefine)
 
-install(FILES ysEvent.h DESTINATION ${CMAKE_SOURCE_DIR}/inc)
+install(FILES ysEvent.hpp DESTINATION ${CMAKE_SOURCE_DIR}/inc)
