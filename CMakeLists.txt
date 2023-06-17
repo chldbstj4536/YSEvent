@@ -1,13 +1,10 @@
-﻿if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    message(FATAL_ERROR YSEvent must be subdirectory)
-endif()
+﻿cmake_minimum_required(VERSION 3.25)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+project(YSEvent
+    LANGUAGES CXX)
 
-target_sources(${target_name} PUBLIC FILE_SET ysEvent TYPE HEADERS FILES ysEvent.hpp)
-target_compile_features(${target_name} PUBLIC cxx_std_20)
+execute_process(COMMAND ${CMAKE_COMMAND} -S ${CMAKE_CURRENT_SOURCE_DIR}/submodules/YSDefine -B ${CMAKE_CURRENT_BINARY_DIR}/YSDefine -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX})
+execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR}/YSDefine --target install)
 
-add_subdirectory(submodules/YSDefine)
-
-install(FILES ysEvent.hpp DESTINATION ${CMAKE_SOURCE_DIR}/inc)
+install(FILES ysEvent.hpp
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/inc)
